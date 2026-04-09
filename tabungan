@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabungan Jawir - Dark Mode</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            height: 100vh;
+            overflow: hidden; 
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 10px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+        }
+
+        #toast-msg {
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .input-dark {
+            background-color: #0f172a;
+            border: 1px solid #1e293b;
+        }
+        
+        .input-dark:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 1px #3b82f6;
+        }
+
+        .hidden-screen {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex flex-col">
+    
+    <!-- Layar Login/Register -->
+    <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-[#020617] p-4">
+        <div class="w-full max-w-md bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-extrabold text-white tracking-tight mb-2">💰 Tabungan<span class="text-blue-500">Jawir</span></h1>
+                <p id="auth-title" class="text-slate-400 text-sm">Masuk buat cek saldo ente</p>
+            </div>
+            
+            <form id="auth-form" class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5 ml-1 tracking-widest">Username</label>
+                    <input type="text" id="username" required class="w-full px-4 py-3 input-dark rounded-xl outline-none text-slate-200 transition-all" placeholder="Username bebas...">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5 ml-1 tracking-widest">Password</label>
+                    <input type="password" id="password" required class="w-full px-4 py-3 input-dark rounded-xl outline-none text-slate-200 transition-all" placeholder="••••••••">
+                </div>
+                
+                <button type="submit" id="auth-submit-btn" class="w-full py-4 gradient-bg text-white font-bold rounded-xl shadow-lg hover:brightness-110 active:scale-[0.98] transition-all uppercase tracking-widest text-xs mt-2">
+                    Masuk Sekarang
+                </button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <button id="toggle-auth" class="text-xs font-bold text-slate-500 hover:text-blue-400 transition-colors uppercase tracking-widest">
+                    Belum punya akun? Bikin dulu wok
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content (App) -->
+    <div id="app-content" class="max-w-6xl mx-auto w-full h-full flex flex-col hidden-screen">
+        
+        <!-- Header -->
+        <header class="mb-6 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
+            <div>
+                <h1 class="text-2xl font-extrabold text-white tracking-tight">💰 Tabungan<span class="text-blue-500">Jawir</span></h1>
+                <p class="text-slate-400 text-sm italic">Halo, <span id="display-name" class="text-blue-400 font-bold">User</span>! Simpan uangmu jangan boros.</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div id="status-badge" class="px-4 py-1.5 bg-slate-900 rounded-full border border-slate-800 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    Akun Aktif
+                </div>
+                <button id="logout-btn" class="px-4 py-1.5 bg-rose-500/10 border border-rose-500/20 rounded-full text-[10px] font-bold text-rose-500 uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all">
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 shrink-0">
+            <div class="gradient-bg p-5 rounded-2xl shadow-2xl text-white">
+                <p class="text-blue-100 text-[10px] font-bold uppercase tracking-wider">Saldo Akhir</p>
+                <h2 id="total-saldo" class="text-2xl font-bold mt-1">Rp 0</h2>
+            </div>
+            <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex items-center gap-3">
+                <div class="text-blue-500 bg-blue-500/10 p-2 rounded-lg text-lg">↗️</div>
+                <div>
+                    <p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Total Masuk</p>
+                    <p id="total-masuk" class="text-lg font-bold text-slate-200">Rp 0</p>
+                </div>
+            </div>
+            <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex items-center gap-3">
+                <div class="text-rose-500 bg-rose-500/10 p-2 rounded-lg text-lg">↘️</div>
+                <div>
+                    <p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Total Keluar</p>
+                    <p id="total-keluar" class="text-lg font-bold text-slate-200">Rp 0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0 overflow-hidden">
+            
+            <!-- Left: Form -->
+            <div class="lg:col-span-4 shrink-0">
+                <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+                    <h3 class="text-sm font-bold text-white mb-4 uppercase tracking-widest flex items-center gap-2">
+                        <span class="w-1 h-4 bg-blue-500 rounded-full"></span> Tambah Data
+                    </h3>
+                    <form id="saving-form" class="space-y-4 text-sm">
+                        <div class="grid grid-cols-2 gap-2 bg-black/40 p-1 rounded-xl">
+                            <button type="button" id="type-in" class="py-2 rounded-lg font-bold transition-all text-blue-400 bg-slate-800 border border-slate-700">Masuk</button>
+                            <button type="button" id="type-out" class="py-2 rounded-lg font-bold transition-all text-slate-500">Keluar</button>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5 ml-1 tracking-widest">Keterangan</label>
+                            <input type="text" id="desc-input" required class="w-full px-4 py-2.5 input-dark rounded-xl outline-none text-slate-200 transition-all" placeholder="waduh nabung sisa apaan">
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5 ml-1 tracking-widest">Nominal (Gunakan k/jt)</label>
+                            <input type="text" id="amount-display" required class="w-full px-4 py-2.5 input-dark rounded-xl outline-none font-bold text-slate-200 transition-all" placeholder="nabung berapa hari ini wok" autocomplete="off">
+                            <input type="hidden" id="amount-input">
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5 ml-1 tracking-widest">Tanggal</label>
+                            <input type="date" id="date-input" required class="w-full px-4 py-2.5 input-dark rounded-xl outline-none text-slate-200 transition-all">
+                        </div>
+
+                        <div class="relative pt-2">
+                            <button type="submit" class="w-full py-3.5 gradient-bg text-white font-bold rounded-xl shadow-lg hover:brightness-110 active:scale-[0.98] transition-all uppercase tracking-widest text-xs">
+                                Simpan Transaksi
+                            </button>
+                            <p id="toast-msg" class="absolute -bottom-8 left-0 right-0 text-center text-blue-400 font-bold italic text-xs opacity-0 pointer-events-none">
+                                anjay nabung beliau
+                            </p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right: History -->
+            <div class="lg:col-span-8 flex flex-col min-h-0 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+                <div class="p-5 border-b border-slate-800 flex justify-between items-center shrink-0">
+                    <h3 class="text-sm font-bold text-white uppercase tracking-widest">Riwayat Transaksi</h3>
+                    <button id="clear-data" class="text-[10px] font-bold text-rose-500 hover:bg-rose-500/10 px-3 py-1.5 rounded-lg transition uppercase tracking-widest">Reset Data</button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto custom-scroll">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="sticky top-0 bg-slate-900 z-10 shadow-md text-[10px] text-slate-500 uppercase font-bold tracking-widest">
+                            <tr>
+                                <th class="px-6 py-4">Informasi</th>
+                                <th class="px-6 py-4 text-right">Nominal</th>
+                                <th class="px-6 py-4 text-center w-20">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-list" class="divide-y divide-slate-800/50">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                    
+                    <div id="empty-state" class="hidden p-20 text-center">
+                        <p class="text-slate-600 text-sm font-medium">Belum ada riwayat transaksi.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- LOGIKA AUTH ---
+        let users = JSON.parse(localStorage.getItem('jawir_users')) || [];
+        let currentUser = JSON.parse(localStorage.getItem('jawir_session')) || null;
+        let isRegisterMode = false;
+
+        const authScreen = document.getElementById('auth-screen');
+        const appContent = document.getElementById('app-content');
+        const authForm = document.getElementById('auth-form');
+        const toggleAuthBtn = document.getElementById('toggle-auth');
+        const authTitle = document.getElementById('auth-title');
+        const authSubmitBtn = document.getElementById('auth-submit-btn');
+        const displayName = document.getElementById('display-name');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        toggleAuthBtn.onclick = () => {
+            isRegisterMode = !isRegisterMode;
+            authTitle.innerText = isRegisterMode ? "Bikin akun biar tabungan aman" : "Masuk buat cek saldo ente";
+            authSubmitBtn.innerText = isRegisterMode ? "Daftar Akun" : "Masuk Sekarang";
+            toggleAuthBtn.innerText = isRegisterMode ? "Udah punya akun? Login aja" : "Belum punya akun? Bikin dulu wok";
+        };
+
+        authForm.onsubmit = (e) => {
+            e.preventDefault();
+            const userVal = document.getElementById('username').value.trim();
+            const passVal = document.getElementById('password').value;
+
+            if (isRegisterMode) {
+                if (users.find(u => u.username === userVal)) {
+                    alert('Username udah ada yang pake wok!');
+                    return;
+                }
+                // Akun baru dibuat dengan array transaksi kosong
+                const newUser = { username: userVal, password: passVal, transactions: [] };
+                users.push(newUser);
+                saveAllUsers();
+                alert('Akun berhasil dibuat! Silahkan login.');
+                toggleAuthBtn.click();
+            } else {
+                const user = users.find(u => u.username === userVal && u.password === passVal);
+                if (user) {
+                    currentUser = user;
+                    localStorage.setItem('jawir_session', JSON.stringify(currentUser));
+                    initApp();
+                } else {
+                    alert('Username/Password salah wok!');
+                }
+            }
+        };
+
+        logoutBtn.onclick = () => {
+            syncAndSave(); // Simpan data terakhir sebelum logout
+            localStorage.removeItem('jawir_session');
+            currentUser = null;
+            location.reload();
+        };
+
+        function saveAllUsers() {
+            localStorage.setItem('jawir_users', JSON.stringify(users));
+        }
+
+        function syncAndSave() {
+            if (currentUser) {
+                const userIdx = users.findIndex(u => u.username === currentUser.username);
+                if (userIdx !== -1) {
+                    users[userIdx].transactions = transactions;
+                    saveAllUsers();
+                }
+            }
+        }
+
+        // --- LOGIKA UTAMA APLIKASI ---
+        let transactions = [];
+        let currentType = 'in';
+
+        const form = document.getElementById('saving-form');
+        const historyList = document.getElementById('history-list');
+        const totalSaldoEl = document.getElementById('total-saldo');
+        const totalMasukEl = document.getElementById('total-masuk');
+        const totalKeluarEl = document.getElementById('total-keluar');
+        const amountDisplay = document.getElementById('amount-display');
+        const amountInputHidden = document.getElementById('amount-input');
+        const typeInBtn = document.getElementById('type-in');
+        const typeOutBtn = document.getElementById('type-out');
+        const descInput = document.getElementById('desc-input');
+        const emptyState = document.getElementById('empty-state');
+        const toastMsg = document.getElementById('toast-msg');
+
+        function initApp() {
+            if (!currentUser) return;
+            
+            authScreen.classList.add('hidden-screen');
+            appContent.classList.remove('hidden-screen');
+            displayName.innerText = currentUser.username;
+            
+            // Ambil data terbaru dari database users berdasarkan username yang login
+            const userFromDb = users.find(u => u.username === currentUser.username);
+            transactions = userFromDb ? userFromDb.transactions : [];
+            
+            updateUI();
+        }
+
+        typeInBtn.onclick = () => {
+            currentType = 'in';
+            typeInBtn.className = "py-2 rounded-lg font-bold transition-all text-blue-400 bg-slate-800 border border-slate-700";
+            typeOutBtn.className = "py-2 rounded-lg font-bold transition-all text-slate-500";
+            descInput.placeholder = "waduh nabung sisa apaan";
+            amountDisplay.placeholder = "nabung berapa hari ini wok";
+        };
+
+        typeOutBtn.onclick = () => {
+            currentType = 'out';
+            typeOutBtn.className = "py-2 rounded-lg font-bold transition-all text-rose-400 bg-slate-800 border border-slate-700";
+            typeInBtn.className = "py-2 rounded-lg font-bold transition-all text-slate-500";
+            descInput.placeholder = "keluar apa nih hari ini";
+            amountDisplay.placeholder = "keluar buat apaan dh";
+        };
+
+        const formatDots = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        
+        const formatRupiah = (num) => {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(num);
+        };
+
+        amountDisplay.addEventListener('input', (e) => {
+            let val = e.target.value.toLowerCase();
+            let converted = val.replace(/jt/g, '000000').replace(/k/g, '000');
+            const cleanNum = converted.replace(/[^0-9]/g, "");
+            amountInputHidden.value = cleanNum;
+            e.target.value = cleanNum ? formatDots(cleanNum) : "";
+        });
+
+        function showToast() {
+            toastMsg.style.opacity = "1";
+            setTimeout(() => {
+                toastMsg.style.opacity = "0";
+            }, 3000);
+        }
+
+        function updateUI() {
+            const sumIn = transactions.filter(t => t.type === 'in').reduce((a, b) => a + b.amount, 0);
+            const sumOut = transactions.filter(t => t.type === 'out').reduce((a, b) => a + b.amount, 0);
+            const balance = sumIn - sumOut;
+
+            totalSaldoEl.textContent = formatRupiah(balance);
+            totalMasukEl.textContent = formatRupiah(sumIn);
+            totalKeluarEl.textContent = formatRupiah(sumOut);
+
+            historyList.innerHTML = '';
+            
+            if (transactions.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                const sorted = [...transactions].sort((a, b) => b.id - a.id);
+                
+                sorted.forEach(item => {
+                    const isIn = item.type === 'in';
+                    const tr = document.createElement('tr');
+                    tr.className = "text-sm hover:bg-slate-800/40 transition-colors";
+                    tr.innerHTML = `
+                        <td class="px-6 py-4">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-slate-200">${item.desc}</span>
+                                <span class="text-[9px] text-slate-500 uppercase tracking-tighter font-bold">${item.date}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-right font-bold ${isIn ? 'text-blue-400' : 'text-rose-400'}">
+                            ${isIn ? '+' : '-'} ${formatDots(item.amount)}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <button onclick="deleteItem(${item.id})" class="text-slate-600 hover:text-rose-500 transition-colors p-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </td>
+                    `;
+                    historyList.appendChild(tr);
+                });
+            }
+            
+            // Simpan perubahan ke database user global
+            syncAndSave();
+        }
+
+        form.onsubmit = (e) => {
+            e.preventDefault();
+            const amt = parseFloat(amountInputHidden.value);
+            if (!amt) return;
+
+            transactions.push({
+                id: Date.now(),
+                desc: descInput.value,
+                amount: amt,
+                type: currentType,
+                date: document.getElementById('date-input').value
+            });
+
+            form.reset();
+            amountInputHidden.value = "";
+            document.getElementById('date-input').valueAsDate = new Date();
+            
+            descInput.placeholder = currentType === 'in' ? "waduh nabung sisa apaan" : "keluar apa nih hari ini";
+            amountDisplay.placeholder = currentType === 'in' ? "nabung berapa hari ini wok" : "keluar buat apaan dh";
+            
+            updateUI();
+            showToast();
+        };
+
+        window.deleteItem = (id) => {
+            transactions = transactions.filter(t => t.id !== id);
+            updateUI();
+        };
+
+        document.getElementById('clear-data').onclick = () => {
+            if (confirm('Hapus semua data tabungan ente?')) {
+                transactions = [];
+                updateUI();
+            }
+        };
+
+        window.onload = () => {
+            document.getElementById('date-input').valueAsDate = new Date();
+            // Cek apakah user masih memiliki session aktif
+            if (currentUser) {
+                initApp();
+            }
+        };
+    </script>
+</body>
+</html>
